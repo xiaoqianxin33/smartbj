@@ -1,0 +1,131 @@
+package com.itheima62.smartbj.newstpipage;
+
+import android.support.v4.view.ViewPager;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import com.google.gson.Gson;
+import com.itheima62.smartbj.R;
+import com.itheima62.smartbj.activity.MainActivity;
+import com.itheima62.smartbj.domain.NewsCenterData.NewsData.ViewTagData;
+import com.itheima62.smartbj.domain.TPINewsData;
+import com.itheima62.smartbj.utils.MyConstants;
+import com.itheima62.smartbj.utils.SpTools;
+import com.lidroid.xutils.HttpUtils;
+import com.lidroid.xutils.ViewUtils;
+import com.lidroid.xutils.exception.HttpException;
+import com.lidroid.xutils.http.ResponseInfo;
+import com.lidroid.xutils.http.callback.RequestCallBack;
+import com.lidroid.xutils.http.client.HttpRequest.HttpMethod;
+import com.lidroid.xutils.view.annotation.ViewInject;
+
+/**
+ * @author Administrator
+ * @创建时间 2015-7-7 上午9:53:48
+ * @描述 新闻中心页签对应的页面
+ *
+ * @ svn提交者：$Author$
+ * @ 提交时间: $Date$
+ * @ 当前版本: $Rev$
+ */
+public class TPINewsNewsCenterPager
+{
+	private static final Class<Object>	TPINewsData	= null;
+
+	//所有组件
+	
+	@ViewInject(R.id.vp_tpi_news_lunbo_pic)
+	private ViewPager vp_lunbo ; //轮播图的显示组件
+	
+	@ViewInject(R.id.tv_tpi_news_pic_desc)
+	private TextView tv_pic_desc;//图片的描述信息
+	
+	@ViewInject(R.id.ll_tpi_news_pic_points)
+	private LinearLayout ll_points;//轮播图的每张图片对应的点组合
+	
+	@ViewInject(R.id.lv_tpi_news_listnews)
+	private ListView lv_listnews;// 显示列表新闻的组件
+	
+	//数据
+	private MainActivity mainActivity;
+	private View	root;
+	private ViewTagData viewTagData;//页签对应的数据
+
+	private Gson	gson;
+	
+	public TPINewsNewsCenterPager(MainActivity mainActivity, ViewTagData viewTagData){
+		this.mainActivity = mainActivity;
+		this.viewTagData = viewTagData;
+		
+		initView();//初始化界面
+		initData();//初始化数据
+		initEvent();//初始化事件
+	}
+
+	private void initEvent() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void initData() {
+		gson = new Gson();
+		
+		//从本地获取数据
+		String jsonCache = SpTools.getString(mainActivity, viewTagData.url, "");
+		if (!TextUtils.isEmpty(jsonCache)) {
+			//有数据，处理数据
+			parseJson(jsonCache);
+		}
+		
+		getDataFromNet();//从网络获取数据
+	}
+	
+	private void parseJson(String jsonData){
+		//解析json数据
+		
+		TPINewsData tpiNewsData = gson.fromJson(jsonData, TPINewsData.class);
+		System.out.println(tpiNewsData.data.news.get(0).title);
+	}
+
+	private void getDataFromNet() {
+		//httpUtils
+		HttpUtils httpUtils = new HttpUtils();
+		httpUtils.send(HttpMethod.GET, MyConstants.SERVERURL + viewTagData.url , new RequestCallBack<String>() {
+
+			@Override
+			public void onSuccess(ResponseInfo<String> responseInfo) {
+				//请求数据成功
+				String jsonData = responseInfo.result;
+				
+				//保存数据到本地
+				SpTools.setString(mainActivity, viewTagData.url, jsonData);
+				
+				//处理数据
+				parseJson(jsonData);
+			}
+
+			@Override
+			public void onFailure(HttpException error, String msg) {
+				//请求数据失败
+			}
+		});
+	}
+
+	private void initView() {
+		//页签对应页面的根布局
+		root = View.inflate(mainActivity, R.layout.tpi_news_centent, null);
+		
+		ViewUtils.inject(this, root);
+	}
+	
+	public View getRootView(){
+		return root;
+	}
+	
+	
+	
+	
+}

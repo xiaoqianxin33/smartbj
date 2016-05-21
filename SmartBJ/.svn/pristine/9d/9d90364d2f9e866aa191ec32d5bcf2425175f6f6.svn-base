@@ -1,0 +1,192 @@
+
+
+package com.itheima62.smartbj.view;
+
+import com.itheima62.smartbj.R;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+
+/**
+ * @author Administrator
+ * @创建时间 2015-7-8 上午8:40:33
+ * @描述 自定义刷新头和加载数据尾的ListView
+ * 
+ *     @ svn提交者：$Author$ @ 提交时间: $Date: 2015-07-08 09:03:30 +0800 (Wed, 08
+ *     Jul 2015) $ @ 当前版本: $Rev$
+ */
+public class RefreshListView extends ListView
+{
+
+	private View			foot;							// listview加载更多数据的尾部组件
+	private LinearLayout	head;							// listview刷新数据的头部组件
+	private LinearLayout	ll_refresh_head_root;
+	private int				ll_refresh_head_root_Height;
+	private int				ll_refresh_foot_Height;
+	private float			downY			= -1;
+	private final int		PULL_DOWN		= 1;			// 下拉刷新状态
+	private final int		RELEASE_STATE	= 2;			// 松开刷新
+	private final int		REFRESHING		= 3;			// 正在刷新
+	private int				currentState = PULL_DOWN;//当前的状态
+	private View			lunbotu;
+	private int				listViewOnScreanY;				// listview在屏幕中的y轴坐标位置
+
+	public RefreshListView(Context context, AttributeSet attrs, int defStyle) {
+		super(context, attrs, defStyle);
+		// TODO Auto-generated constructor stub
+		initView();
+	}
+
+	public RefreshListView(Context context, AttributeSet attrs) {
+		this(context, attrs, 0);
+	}
+
+	public RefreshListView(Context context) {
+		this(context, null);
+
+	}
+
+	private void initView() {
+		// TODO Auto-generated method stub
+		initRoot();
+		initHead();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see android.widget.AbsListView#onTouchEvent(android.view.MotionEvent)
+	 * 覆盖此完成自己的事件处理
+	 */
+	@Override
+	public boolean onTouchEvent(MotionEvent ev) {
+		// 需要我们的功能屏蔽掉父类的touch事件
+		// 下拉拖动（当listview显示第一个条数据）
+
+		to: switch (ev.getAction()) {
+		case MotionEvent.ACTION_DOWN:// 按下
+			downY = ev.getY();// 按下时y轴坐标
+			System.out.println();
+			break;
+		case MotionEvent.ACTION_MOVE:// 移动
+			if (downY == -1) {
+				downY = ev.getY();
+			}
+			float moveY = ev.getY();
+			
+			// 判断轮播图是否完全显示
+			{
+				int[] location = new int[2];
+				// 如果轮播图没有完全显示，相应的是Listview的事件
+				// 判断轮播图是否完全显示
+				// 取listview在屏幕中坐标 和 轮播图在屏幕中的坐标 判断
+				// 取listview在屏幕中坐标
+				if (listViewOnScreanY == 0) {
+					this.getLocationOnScreen(location);
+					// 获取listview在屏幕中的y轴坐标
+					listViewOnScreanY = location[1];
+				}
+
+				// 轮播图在屏幕中的坐标
+				lunbotu.getLocationOnScreen(location);
+				// 判断
+				if (location[1] < listViewOnScreanY) {
+					// 轮播图没有完全显示
+					// 继续相应listview的事件
+					// System.out.println("没有显示");
+					return super.onTouchEvent(ev);
+				}
+
+			}
+
+			float dy = moveY - downY;
+			// System.out.println("dy:" + dy);
+			// 下拉拖动（当listview显示第一个条数据）处理自己的事件，不让listview原生的拖动事件生效
+			if (dy > 0 && getFirstVisiblePosition() == 0) {
+
+				// 当前padding top 的参数值
+				float scrollYDis = -ll_refresh_head_root_Height + dy;
+
+				if (scrollYDis < 0 && currentState != PULL_DOWN) {
+					// 刷新头没有完全显示
+					// 下拉刷新的状态
+					currentState = PULL_DOWN;//目的只执行一次
+					System.out.println("下拉刷新");
+				} else if (scrollYDis >= 0 && currentState != RELEASE_STATE) {
+					currentState = RELEASE_STATE;//记录松开刷新，只进了一次
+					System.out.println("松开刷新");
+				}
+				ll_refresh_head_root.setPadding(0, (int) scrollYDis, 0, 0);
+				return true;
+			}
+
+			break;
+		case MotionEvent.ACTION_UP:// 松开
+			downY = -1;
+			ll_refresh_head_root.setPadding(0, -ll_refresh_head_root_Height, 0,
+					0);
+			break;
+		default:
+			break;
+		}
+		return super.onTouchEvent(ev);
+	}
+
+	/**
+	 * 初始化尾部组件
+	 */
+	private void initRoot() {
+		// listview 的尾部
+
+		foot = View.inflate(getContext(), R.layout.listview_refresh_foot, null);
+
+		// 测量尾部组件的高度
+
+		foot.measure(0, 0);
+
+		// listview尾部组件的高度
+		ll_refresh_foot_Height = foot.getMeasuredHeight();
+
+		foot.setPadding(0, -ll_refresh_foot_Height, 0, 0);
+		// 加载ListView中
+		addFooterView(foot);
+	}
+
+	/**
+	 * @param view
+	 *            轮播图view
+	 */
+	public void addLunboView(View view) {
+		// 轮播图的组件
+		lunbotu = view;
+		head.addView(view);
+	}
+
+	/**
+	 * 初始化头部组件
+	 */
+	private void initHead() {
+		head = (LinearLayout) View.inflate(getContext(),
+				R.layout.listview_head_container, null);
+		// listview刷新头的根布局
+		ll_refresh_head_root = (LinearLayout) head
+				.findViewById(R.id.ll_listview_head_root);
+
+		// 隐藏刷新头的根布局，轮播图还要显示
+
+		// 获取刷新头组件的高度
+		ll_refresh_head_root.measure(0, 0);
+
+		// 获取测量的高度
+		ll_refresh_head_root_Height = ll_refresh_head_root.getMeasuredHeight();
+
+		ll_refresh_head_root.setPadding(0, -ll_refresh_head_root_Height, 0, 0);
+
+		addHeaderView(head);
+	}
+
+}
